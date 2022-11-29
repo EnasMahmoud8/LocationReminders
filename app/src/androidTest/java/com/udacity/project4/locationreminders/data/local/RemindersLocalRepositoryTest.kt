@@ -11,6 +11,7 @@ import kotlinx.coroutines.test.runBlockingTest
 import org.junit.*
 import com.udacity.project4.locationreminders.data.dto.Result
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import org.junit.runner.RunWith
 
 @ExperimentalCoroutinesApi
@@ -49,7 +50,7 @@ class RemindersLocalRepositoryTest {
 
     @Test
     fun saveReminder_checkData() {
-        runBlockingTest {
+        runBlocking {
             remindersLocalRepository.saveReminder(item1)
             val reminderSaved = remindersLocalRepository.getReminder(item1.id) as Result.Success
             Assert.assertEquals(reminderSaved.data.title, item1.title)
@@ -62,7 +63,7 @@ class RemindersLocalRepositoryTest {
 
     @Test
     fun loadReminders_2Reminders() {
-        runBlockingTest {
+        runBlocking {
             remindersLocalRepository.deleteAllReminders()
             remindersLocalRepository.saveReminder(item1)
             remindersLocalRepository.saveReminder(item2)
@@ -73,9 +74,11 @@ class RemindersLocalRepositoryTest {
 
     @Test
     fun loadReminders_returnError() {
-        runBlockingTest {
+        runBlocking {
             remindersLocalRepository.deleteAllReminders()
-            val responseResult = remindersLocalRepository.getReminders() as Result.Error
+            remindersLocalRepository.saveReminder(item1)
+            remindersLocalRepository.deleteAllReminders()
+            val responseResult = remindersLocalRepository.getReminder(item1.id) as Result.Error
             Assert.assertEquals(responseResult.message, "Reminder not found!")
         }
     }

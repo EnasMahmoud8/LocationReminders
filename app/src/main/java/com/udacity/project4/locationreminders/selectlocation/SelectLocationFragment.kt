@@ -2,7 +2,9 @@ package com.udacity.project4.locationreminders.selectlocation
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Intent
+import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.location.Location
@@ -11,14 +13,20 @@ import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
 import android.view.*
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
+import androidx.core.app.ActivityCompat.startIntentSenderForResult
 import androidx.databinding.DataBindingUtil
+import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.*
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.tasks.Task
 import com.google.android.material.snackbar.Snackbar
 import com.udacity.project4.BuildConfig
 import com.udacity.project4.R
@@ -36,6 +44,33 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     private lateinit var binding: FragmentSelectLocationBinding
     private lateinit var mMap: GoogleMap
     private var poiMarker: Marker? = null
+
+    private val locationSettingLauncher =
+        registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                checkDeviceLocationSettings()
+            } else {
+                showSettingSnackBar()
+            }
+        }
+
+    private val locationPermissionRequest = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        when {
+            permissions.getOrDefault(Manifest.permission.ACCESS_FINE_LOCATION, false) -> {
+                checkDeviceLocationSettings()
+                return@registerForActivityResult
+            }
+            permissions.getOrDefault(Manifest.permission.ACCESS_COARSE_LOCATION, false) -> {
+                checkDeviceLocationSettings()
+                return@registerForActivityResult
+            }
+            else -> {
+                showSnackBar()
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -98,29 +133,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         setPoiClick(mMap)
         setMapStyle(mMap)
 
-        if (isPermissionsApproved()) {
-            getUserLocation()
-        } else {
-            requestLocationPermissions()
-        }
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun getUserLocation() {
-
-        mMap.isMyLocationEnabled = true
-
-        LocationServices.getFusedLocationProviderClient(requireActivity()).lastLocation
-            .addOnSuccessListener { location: Location? ->
-                location?.let {
-                    val userLocation = LatLng(location.latitude, location.longitude)
-                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(userLocation, 15f))
-                    mMap.addMarker(
-                        MarkerOptions().position(userLocation)
-                            .title("My Location")
-                    ).showInfoWindow()
-                }
-            }
+        requestLocationPermissions()
     }
 
     private fun setMapLongClick(map: GoogleMap) {
@@ -160,7 +173,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         try {
             val success = map.setMapStyle(
                 MapStyleOptions.loadRawResourceStyle(
-                    activity,
+                    requireContext(),
                     R.raw.map_style
                 )
             )
@@ -173,63 +186,89 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         }
     }
 
-    private fun isPermissionsApproved(): Boolean {
-
-        return PackageManager.PERMISSION_GRANTED ==
-                ActivityCompat.checkSelfPermission(
-                    requireContext(),
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                )
-    }
-
     @SuppressLint("MissingPermission")
     private fun requestLocationPermissions() {
-        if (isPermissionsApproved()) {
-            mMap.isMyLocationEnabled = true
-        }
-        else {
-            val permissionsArray = arrayOf(
-                Manifest.permission.ACCESS_FINE_LOCATION
-//                ,Manifest.permission.ACCESS_COARSE_LOCATION
-            )
-            val resultCode = 1
 
-            Log.d("TAG", "Request foreground only location permission")
-            ActivityCompat.requestPermissions(
-                requireActivity(),
-                permissionsArray,
-                resultCode
-            )
+        var permissionsArray = arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+
+        locationPermissionRequest.launch(permissionsArray)
+    }
+
+    private fun showSnackBar() {
+        Snackbar.make(
+            binding.activityMapsMain,
+            R.string.permission_denied_explanation,
+            Snackbar.LENGTH_LONG
+        )
+            .setAction(R.string.settings) {
+                startActivity(Intent().apply {
+                    action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                    data = Uri.fromParts("package", BuildConfig.APPLICATION_ID, null)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                })
+            }.show()
+    }
+
+    private fun showSettingSnackBar() {
+        Snackbar.make(
+            binding.activityMapsMain,
+            R.string.location_required_error, Snackbar.LENGTH_LONG
+        ).setAction(android.R.string.ok) {
+            checkDeviceLocationSettings()
+        }.show()
+    }
+
+
+    private fun checkDeviceLocationSettings(resolve: Boolean = true) {
+         val locationRequest = LocationRequest.create()
+
+        val builder = LocationSettingsRequest.Builder().setAlwaysShow(true)
+            .addLocationRequest(locationRequest)
+        val settingsClient = LocationServices.getSettingsClient(requireActivity())
+
+        val locationSettingsResponseTask: Task<LocationSettingsResponse> =
+            settingsClient.checkLocationSettings(builder.build())
+        locationSettingsResponseTask.addOnFailureListener { exception ->
+            if (exception is ResolvableApiException) {
+                try {
+                    locationSettingLauncher?.launch(
+                        IntentSenderRequest.Builder(exception.resolution.intentSender).build()
+                    )
+
+                } catch (sendEx: IntentSender.SendIntentException) {
+                    showSettingSnackBar()                }
+            } else {
+                showSettingSnackBar()
+            }
+        }
+        locationSettingsResponseTask.addOnCompleteListener {
+
+                getUserLocation()
         }
     }
 
-    @SuppressLint("MissingPermission")
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        Log.d("TAG", "onRequestPermissionResult")
 
-        if (
-            grantResults.isEmpty() &&
-            grantResults[0] == PackageManager.PERMISSION_DENIED
-        ) {
-            Snackbar.make(
-                binding.activityMapsMain,
-                R.string.permission_denied_explanation,
-                Snackbar.LENGTH_INDEFINITE
+    @SuppressLint("MissingPermission")
+    fun getUserLocation() {
+        mMap.isMyLocationEnabled = true
+        LocationServices.getFusedLocationProviderClient(requireActivity())
+            .getCurrentLocation(
+                CurrentLocationRequest.Builder().setPriority(Priority.PRIORITY_HIGH_ACCURACY)
+                    .build(), null
             )
-                .setAction(R.string.settings) {
-                    startActivity(Intent().apply {
-                        action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-                        data = Uri.fromParts("package", BuildConfig.APPLICATION_ID, null)
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    })
-                }.show()
-        } else {
-            getUserLocation()
-        }
+            .addOnSuccessListener { location: Location? ->
+                location?.let {
+                    val userLocation = LatLng(location.latitude, location.longitude)
+                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(userLocation, 15f))
+                    mMap.addMarker(
+                        MarkerOptions().position(userLocation)
+                            .title("My Location")
+                    )?.showInfoWindow()
+                }
+            }
     }
 
 }

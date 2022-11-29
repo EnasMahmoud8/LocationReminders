@@ -1,6 +1,8 @@
 package com.udacity.project4.locationreminders.reminderlist
 
 import android.os.Bundle
+import org.koin.test.get
+import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.fragment.app.testing.launchFragmentInContainer
 import androidx.navigation.NavController
 import androidx.navigation.Navigation
@@ -28,15 +30,16 @@ import org.junit.Assert.*
 
 import org.junit.After
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.koin.android.ext.koin.androidContext
 import org.koin.androidx.viewmodel.dsl.viewModel
+import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
 import org.koin.dsl.module
 import org.koin.test.AutoCloseKoinTest
-import org.koin.test.get
 import org.koin.test.inject
 import org.mockito.Mockito
 
@@ -45,10 +48,11 @@ import org.mockito.Mockito
 //UI Testing
 @MediumTest
 class ReminderListFragmentTest : AutoCloseKoinTest() {
+    @get:Rule
+    val instantExecutor = InstantTaskExecutorRule()
 
     private val item1 = ReminderDTO("Reminder1", "Description1", "Location1", 12.0, 5.0, "1")
-
-    private val reminderDataSource: ReminderDataSource by inject()
+    private lateinit var reminderDataSource: ReminderDataSource
 
     @Before
     fun setUp() {
@@ -56,8 +60,8 @@ class ReminderListFragmentTest : AutoCloseKoinTest() {
         val myModule = module {
             viewModel {
                 RemindersListViewModel(
-                    get(),
-                    get()
+                    getApplicationContext(),
+                    get() as ReminderDataSource
                 )
             }
 
@@ -72,16 +76,17 @@ class ReminderListFragmentTest : AutoCloseKoinTest() {
         }
 
         startKoin {
-            androidContext(getApplicationContext())
             modules(listOf(myModule))
         }
-    }
 
-    @After
-    fun tearDown() {
-        runBlockingTest {
+        reminderDataSource = get()
+        runBlocking {
             reminderDataSource.deleteAllReminders()
         }
+    }
+    @After
+    fun tearDown() {
+        stopKoin()
     }
 
     @Test

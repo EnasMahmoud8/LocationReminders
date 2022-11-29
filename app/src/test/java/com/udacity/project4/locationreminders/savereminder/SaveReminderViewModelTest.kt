@@ -84,5 +84,4 @@ class SaveReminderViewModelTest  {
         assertEquals(saveReminder.showSnackBarInt.getOrAwaitValue(),R.string.err_select_location )
     }
 
-
 }

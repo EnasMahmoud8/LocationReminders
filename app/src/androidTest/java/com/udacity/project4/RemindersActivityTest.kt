@@ -99,7 +99,6 @@ class RemindersActivityTest :
         IdlingRegistry.getInstance().register(dataBindingIdlingResource)
     }
 
-
     @After
     fun tearDown() {
         IdlingRegistry.getInstance().unregister(EspressoIdlingResource.countingIdlingResource)
@@ -111,21 +110,9 @@ class RemindersActivityTest :
         val scenario = ActivityScenario.launch(RemindersActivity::class.java)
         dataBindingIdlingResource.monitorActivity(scenario)
         Espresso.onView(withId(R.id.addReminderFAB)).perform(ViewActions.click())
-        Espresso.onView(withId(R.id.saveReminder)).perform(ViewActions.click())
+        Espresso.onView(withId(R.id.addReminder)).perform(ViewActions.click())
         Espresso.onView(withId(com.google.android.material.R.id.snackbar_text))
             .check(ViewAssertions.matches(ViewMatchers.withText(R.string.err_enter_title)))
-        scenario.close()
-    }
-    @Test
-    fun showSnack_errorLocation(){
-        val scenario = ActivityScenario.launch(RemindersActivity::class.java)
-        dataBindingIdlingResource.monitorActivity(scenario)
-        Espresso.onView(withId(R.id.addReminderFAB)).perform(ViewActions.click())
-        Espresso.onView(withId(R.id.reminderTitle))
-            .perform(ViewActions.typeText("Location One"), ViewActions.closeSoftKeyboard())
-        Espresso.onView(withId(R.id.saveReminder)).perform(ViewActions.click())
-        Espresso.onView(withId(com.google.android.material.R.id.snackbar_text))
-            .check(ViewAssertions.matches(ViewMatchers.withText(R.string.err_select_location)))
         scenario.close()
     }
 
@@ -140,14 +127,26 @@ class RemindersActivityTest :
         Espresso.onView(withId(R.id.reminderDescription))
             .perform(ViewActions.typeText("Description1"), ViewActions.closeSoftKeyboard())
         Espresso.onView(withId(R.id.selectLocation)).perform(ViewActions.click())
-        Espresso.onView(withId(com.google.android.material.R.id.snackbar_action))
-            .perform(ViewActions.click())
+
         Espresso.onView(withId(R.id.map)).perform(ViewActions.longClick())
         Espresso.onView(withId(R.id.saveBtn)).perform(ViewActions.click())
-        Espresso.onView(withId(R.id.saveReminder)).perform(ViewActions.click())
+        Espresso.onView(withId(R.id.addReminder)).perform(ViewActions.click())
         Espresso.onView(ViewMatchers.withText(R.string.reminder_saved))
             .inRoot(RootMatchers.withDecorView(IsNot.not(Matchers.`is`(getActivity(scenario)?.window?.decorView))))
             .check(ViewAssertions.matches(ViewMatchers.isDisplayed()))
+        scenario.close()
+    }
+
+    @Test
+    fun showSnack_errorLocation(){
+        val scenario = ActivityScenario.launch(RemindersActivity::class.java)
+        dataBindingIdlingResource.monitorActivity(scenario)
+        Espresso.onView(withId(R.id.addReminderFAB)).perform(ViewActions.click())
+        Espresso.onView(withId(R.id.reminderTitle))
+            .perform(ViewActions.typeText("Location One"), ViewActions.closeSoftKeyboard())
+        Espresso.onView(withId(R.id.addReminder)).perform(ViewActions.click())
+        Espresso.onView(withId(com.google.android.material.R.id.snackbar_text))
+            .check(ViewAssertions.matches(ViewMatchers.withText(R.string.err_select_location)))
         scenario.close()
     }
 }

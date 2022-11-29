@@ -54,10 +54,11 @@ class RemindersDaoTest {
         runBlockingTest {
             remindersDatabase.reminderDao().saveReminder(item1)
             remindersDatabase.reminderDao().saveReminder(item2)
-            remindersDatabase.reminderDao().delete(item1.id)
             val remindersList = remindersDatabase.reminderDao().getReminders()
             assertEquals(remindersList.size, 2)
-            assertEquals(remindersList[0].id, item2.id)
+            remindersDatabase.reminderDao().delete(item1.id)
+            val remindersList2 = remindersDatabase.reminderDao().getReminders()
+            assertEquals(remindersList2[0].id, item2.id)
         }
     }
 

@@ -52,6 +52,5 @@
     <string name="ferry_building_location">in the Ferry Building</string>
     <string name="pier_39_location">at Pier 39</string>
     <string name="union_square_location">in Union Square</string>
-    <string name="geofences_added">Reminder Geofence added.</string>
 
 </resources>
