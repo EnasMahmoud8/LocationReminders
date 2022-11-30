@@ -9,18 +9,18 @@ import com.udacity.project4.R
 
 class RemindersActivity : AppCompatActivity() {
 
-    private lateinit var nav_host_fragment: FragmentContainerView
+    private lateinit var nav_host_fragment : NavHostFragment
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_reminders)
-
-        nav_host_fragment = findViewById<FragmentContainerView>(R.id.nav_host_fragment)
+        nav_host_fragment = supportFragmentManager
+            .findFragmentById(R.id.nav_host_fragment) as NavHostFragment
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             android.R.id.home -> {
-                (nav_host_fragment as NavHostFragment).navController.popBackStack()
+                nav_host_fragment.navController.popBackStack()
                 return true
             }
         }
