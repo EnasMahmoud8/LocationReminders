@@ -3,7 +3,7 @@ package com.udacity.project4.locationreminders.data
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
 import com.udacity.project4.locationreminders.data.dto.Result
 
-class FakeDataSource (private var reminders: MutableList<ReminderDTO>? = mutableListOf()) :
+class FakeDataSource (private var reminders: MutableList<ReminderDTO> = mutableListOf()) :
     ReminderDataSource {
 
     private var returnSuccess = true
@@ -13,10 +13,11 @@ class FakeDataSource (private var reminders: MutableList<ReminderDTO>? = mutable
     }
 
     override suspend fun getReminders(): Result<List<ReminderDTO>> {
-        return if(returnSuccess){
-            Result.Success(ArrayList(reminders))
+         if(returnSuccess){
+             reminders.let { return Result.Success(it) }
+             return Result.Error("Reminder not found!")
         } else
-            Result.Error("Reminder not found!")
+            return Result.Error("Error return reminders")
     }
 
     override suspend fun saveReminder(reminder: ReminderDTO) {
@@ -32,7 +33,7 @@ class FakeDataSource (private var reminders: MutableList<ReminderDTO>? = mutable
             else
                 Result.Error("Reminder not found!")
         } else
-            Result.Error("Reminder not found!")
+            Result.Error("Error return reminder")
     }
 
     override suspend fun deleteAllReminders() {
